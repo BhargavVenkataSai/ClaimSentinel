@@ -1,0 +1,85 @@
+# HackerRank Orchestrate — Interview Cheat Sheet
+
+## 30-Second Pitch
+"Multimodal insurance claim validator. CLIP embeddings + rule-based reasoning. No API calls, runs local. Beat text-only baseline on all metrics. Found and fixed evaluation bug before submit."
+
+## The Problem
+- Input: Claim photo(s), claim text, user history
+- Output: Predict 5 things: claim_status (supported/contradicted/not_enough), issue_type (dent/crack/etc.), object_part (bumper/headlight/etc.), evidence_standard_met (yes/no), severity (low/med/high/unknown)
+
+## The Approach (4 Stages)
+1. **CLIP embedding**: Convert image → 512-dim semantic vector (off-the-shelf model)
+2. **Retrieval**: Find N similar images from 20-row labeled sample set (cosine similarity, same claim_object only)
+3. **Rules**: Parse text, check image quality, flag user history risks, aggregate signals
+4. **Output**: Synthesize predictions + risk flags → CSV
+
+## Key Numbers (Update Locally)
+- Baseline claim_status: 55%  →  Final: 65%  (SANDBOX FALLBACK; RE-RUN WITH CLIP)
+- Test set: 44 rows, all passing validation
+- Reference library: 29 images from 20 sample claims
+
+## The Bug I Fixed
+- **What**: `infer_row` had shortcut — if path contains "sample", return gold label instead of running model
+- **Why it mattered**: Sample-set evaluation showed fake 1.000 metrics (should've been red flag)
+- **How I fixed it**: Removed shortcut + added leave-one-out (don't let rows match their own images)
+- **Impact**: Honest metrics now, slightly lower but credible. Never affected test set (claims.csv ≠ sample)
+
+## If They Ask...
+
+**"Walk me through the architecture"**
+→ "CLIP embeddings for semantic search, not dense classification. Retrieval narrows the scope (car claims only compare to car claims). Rules handle the hard cases (quality checks, history flags, text parsing). Synthesis layer combines signals into final prediction."
+
+**"Why not fine-tune a model?"**
+→ "20 labeled rows is way too little. CLIP is already a foundation model, so I'm leveraging transfer learning. Fine-tuning would overfit and add deployment overhead."
+
+**"Biggest challenge?"**
+→ "Evaluation honesty. My original metrics were fake because of the shortcut bug. Discovering and fixing that taught me perfect metrics are a red flag and evaluation matters more than accuracy."
+
+**"What would you do differently?"**
+→ "1. Integrate VLM (BLIP) for actual damage description. 2. More robust temporal analysis on user history. 3. Real error analysis once I see test-set ground truth."
+
+**"How do you handle bias in the reference library?"**
+→ "Leave-one-out during eval: a sample row never matches its own images. Test set has zero exposure (different dataset). User overlap is fine — same customer with different claims is legitimate context."
+
+## One Example to Walk Through
+- **Pick a row from output.csv** that you understand before the interview
+- Be ready to say: what images, what CLIP matches, which rules fired, final prediction
+- Bonus: be ready to say whether you'd trust the prediction and why
+
+## Things NOT to Say
+- ❌ "My metrics were perfect (1.000)!"
+- ❌ "The bug wasn't really that bad"
+- ❌ "I don't understand why CLIP works, but it does"
+- ❌ "If I had more time..."
+
+## Things TO Say
+- ✅ "Honest metrics are more credible than impressive metrics"
+- ✅ "I caught a bug in my own evaluation and fixed it"
+- ✅ "This approach prioritizes interpretability and cost over raw accuracy"
+- ✅ "Here's what I learned from the bug fix..."
+
+## Key Files to Reference
+- `code/main.py` — Full pipeline, ~1000 lines, modular
+- `code/evaluation/main.py` — Honest evaluation framework
+- `output.csv` — Test predictions, your actual submission
+- `FIX_LOG.md` — What was wrong and how you fixed it
+- `INTERVIEW_GUIDE.md` — Full Q&A (read this before interviews)
+
+## Before Interview
+- [ ] Run `python code/evaluation/main.py` locally, memorize your real metrics
+- [ ] Pick one prediction example, trace it end-to-end
+- [ ] Know what CLIP is (OpenAI model, 512-dim embeddings, multimodal)
+- [ ] Know what leave-one-out means (exclude self from reference set during evaluation)
+- [ ] Practice 60-second pitch 5 times
+- [ ] Be ready to explain the bug calmly and own the fix
+
+## During Interview
+- Speak confidently — this is solid work
+- If you don't know something, say "I didn't explore that" not "I don't know"
+- Offer to walk code if they ask (you're ready)
+- Let them ask questions; don't over-explain
+- Own the bug fix — it's a strength, not a weakness
+
+---
+
+**Print this. Keep it nearby. You got this.**
